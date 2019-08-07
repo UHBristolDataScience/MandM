@@ -1,0 +1,81 @@
+---
+title: "m and m"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library("knitr")
+library("dplyr")
+library("ggplot2")
+library("lubridate")
+```
+
+## M and M monthly report
+
+This is a monthly summary report for the M and M data for the BRI General ICU. 
+
+```{r cars}
+
+
+
+
+####import the data from csv into Rstudio - will need to change the filename and file path to the desired month######
+NovemberUpdate_mort.morb_.2018 <- read.csv("~/medicine/M and M data/NovemberUpdate_mort-morb_ 2018.csv")
+
+# assign data to current data
+current_data <- NovemberUpdate_mort.morb_.2018
+
+
+#add the day of week for admission
+current_data$Unit.admit.date <- dmy(current_data$Unit.admit.date)
+current_data$adm_day_name <- wday(current_data$Unit.admit.date, label = TRUE)
+#add the day of week for DC
+current_data$Discharged.died.on..date.<- dmy(current_data$Discharged.died.on..date.)
+current_data$dc_day_name <- wday(current_data$Discharged.died.on..date., label = TRUE)
+
+
+# calculate the summary stats
+summary_stats <-current_data %>% summarise(admissions_total = length(ICNARC.number),
+                                           planned_surgical_admissions = sum(Admission.type =="04. Planned local surgical admission"),
+                                           unplanned_local_admission = sum(Admission.type== "01. Unplanned local admission"),
+                                           planned_transfers = sum(Admission.type == "03. Planned transfer in"),
+                                           unplanned_transfers = sum(Admission.type == "02. Unplanned transfer in"),
+                                           Age_max = max(Age),
+                                           Age_min = min(Age),
+                                           Age_median = median(Age),
+                                           LOS_max = max(Unit.stay..days., na.rm = TRUE),
+                                           LOS_min = min(Unit.stay..days., na.rm = TRUE),
+                                           LOS_median = median(Unit.stay..days., na.rm = TRUE),
+                                           Deaths_total = sum(Outcome.on.discharge.from.this.hospital=="2. Died", na.rm=TRUE),
+                                           ICNARC_expected_deaths = sum(ICNARC.probability/100, na.rm = TRUE),
+                                           Deaths_post_discharge = sum(Unit.outcome!="4. Died" & Outcome.on.discharge.from.this.hospital == "2. Died",na.rm=TRUE),
+                                           low_probabiltiy_deaths = sum(Unit.outcome =="4. Died" & ICNARC.probability < 20, na.rm=TRUE),
+                                           treatment_withdrawls = sum(Treatment.withdrawn == "1", na.rm=TRUE),
+                                           early_deaths= sum(Unit.stay..days. < 0.16666 & Unit.outcome =="4. Died", na.rm=TRUE ),
+                                           late_deaths = sum(Unit.stay..days. > 7 & Unit.outcome =="4. Died", na.rm = TRUE ),
+                                           OHCAs = sum(CPR.in.24h.prior.to.admission.to.Unit == "1", na.rm=TRUE),
+                                           OHCA_deaths = sum(CPR.in.24h.prior.to.admission.to.Unit == "1" & Outcome.on.discharge.from.this.hospital == "2. Died", na.rm=TRUE))
+summary_stats <-round(summary_stats)
+kable(t(summary_stats), caption = "MONTHLY SUMMARY STATS")
+
+##### lists of patients who died - ohcas and non ohcas#####
+
+# list of OHCA patients
+ohca <- current_data %>% filter(CPR.in.24h.prior.to.admission.to.Unit == "1") %>% select(Hospital.number, Surname, Forename, ICNARC.probability, Outcome.on.discharge.from.this.hospital, Unit.outcome) %>% arrange(ICNARC.probability)
+
+kable(ohca, caption = "THIS IS A TABLE OF ALL THE OHCAS - PEOPLE WHO GOT CPR PRIOR TO ADMISSION")
+
+# list of patients who died (not OHCAs)
+deaths_not_ohca <- current_data %>% filter(CPR.in.24h.prior.to.admission.to.Unit !="1") %>% filter(Outcome.on.discharge.from.this.hospital =="2. Died") %>% select(Hospital.number, Surname, Forename, Unit.outcome, ICNARC.probability) %>% arrange(ICNARC.probability) 
+
+kable(deaths_not_ohca, caption = "THIS IS A TABLE OF ALL THE DEATHS WHO DID NOT GET CPR BEFORE ADMISSION")
+
+# output tables
+
+
+
+
+```
